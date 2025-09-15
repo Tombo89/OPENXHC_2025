@@ -31,6 +31,7 @@
 
 /* USER CODE BEGIN INCLUDE */
 
+
 /* USER CODE END INCLUDE */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
@@ -49,7 +50,9 @@
   */
 
 /* USER CODE BEGIN EXPORTED_DEFINES */
-
+ uint8_t  XHC_RX_TryPop(uint8_t *dst, uint16_t *io_len);
+ uint32_t XHC_RX_Count(void);
+ uint32_t XHC_RX_Dropped(void);
 /* USER CODE END EXPORTED_DEFINES */
 
 /**

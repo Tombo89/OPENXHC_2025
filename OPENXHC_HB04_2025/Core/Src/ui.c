@@ -10,10 +10,17 @@
 #include <stdio.h>
 #include <string.h>
 
-// wähle Fonts, die du im Projekt hast (aus fonts.h)
-#define FONT_L  Font_16x26   // große Zahlen
-#define FONT_M  Font_9  // Labels
-#define FONT_S  Font_7x10   // Statusleiste
+// Zusätzliche Cache-Arrays für MC-Koordinaten
+static char lastMC_X[20] = "";
+static char lastMC_Y[20] = "";
+static char lastMC_Z[20] = "";
+
+// Cache für Status-Texte
+static char lastStatusText[32] = "";
+static char lastFeedrateText[16] = "";
+static char lastSpindleText[16] = "";
+
+
 
 // kleine Helfer
 static inline void HLine(int x, int y, int w, uint16_t c){
@@ -91,42 +98,39 @@ void UI_DrawStatic(void){
 
 static void DrawValue(int y, float v, char* lastStr) {
     char buf[20];
-    snprintf(buf, sizeof(buf), "%+7.4f", v);
+    snprintf(buf, sizeof(buf), "%+8.4f", v);
 
     if (strcmp(buf, lastStr) != 0) {
-        int charWidth = 9; // Annahme: Font-Breite, musst du anpassen
+        int charWidth = 11; // Anpassung an deine Font-Breite
         int totalWidth = strlen(buf) * charWidth;
-        int rightEdge = ST7735_WIDTH - UI_MARGIN_R-5; // Rechter Rand
-        int startX = rightEdge - totalWidth; // Startposition für rechtsbündige Ausrichtung
+        int rightEdge = ST7735_WIDTH - UI_MARGIN_R - 5;
+        int startX = rightEdge - totalWidth;
 
-        // Zeichen für Zeichen vergleichen
+        // Zeichenweise Vergleich und Update (wie in deiner DrawValue)
         for (int i = 0; i < strlen(buf) && i < strlen(lastStr); i++) {
             if (buf[i] != lastStr[i]) {
-                // Nur dieses Zeichen neu zeichnen
-                ST7735_FillRectangleFast(startX + i * charWidth, y, charWidth, 12, UI_BG);
+                ST7735_FillRectangleFast(startX + i * charWidth, y, charWidth, 18, UI_BG);
                 char singleChar[2] = {buf[i], '\0'};
                 Print(startX + i * charWidth, y, singleChar, FONT_M, UI_FG);
             }
         }
 
-        // Falls neuer String länger ist
+        // Behandlung unterschiedlicher String-Längen
         if (strlen(buf) > strlen(lastStr)) {
             for (int i = strlen(lastStr); i < strlen(buf); i++) {
                 char singleChar[2] = {buf[i], '\0'};
                 Print(startX + i * charWidth, y, singleChar, FONT_M, UI_FG);
             }
-        }
-        // Falls neuer String kürzer ist - mehr Bereich löschen
-        else if (strlen(buf) < strlen(lastStr)) {
+        } else if (strlen(buf) < strlen(lastStr)) {
             int oldTotalWidth = strlen(lastStr) * charWidth;
             int oldStartX = rightEdge - oldTotalWidth;
-            // Lösche den Bereich zwischen dem neuen und alten String
-            ST7735_FillRectangleFast(oldStartX, y, oldStartX - startX, 12, UI_BG);
+            ST7735_FillRectangleFast(oldStartX, y, oldStartX - startX, 18, UI_BG);
         }
 
         strcpy(lastStr, buf);
     }
 }
+
 
 // Globale Arrays für die letzten Werte
 static char lastX[20] = "";
@@ -140,12 +144,11 @@ void UI_UpdateWC(float x, float y, float z) {
 }
 
 
-//void UI_UpdateMC(float x, float y, float z){
-//    DrawValue(UI_TOP_H2_Y,     x);
-//    DrawValue(UI_TOP_H2_Y+14,  y);
-//    DrawValue(UI_TOP_H2_Y+28,  z);
-//}
-
+void UI_UpdateMC(float x, float y, float z) {
+    DrawValue(UI_TOP_H2_Y,     x, lastMC_X);
+    DrawValue(UI_TOP_H2_Y+14,  y, lastMC_Y);
+    DrawValue(UI_TOP_H2_Y+28,  z, lastMC_Z);
+}
 void UI_UpdatePosText(const char *text){
     // überschreibe „POS: <...>“ rechts vom Label
     ST7735_FillRectangleFast(4+40, UI_BAR_Y+3, 60, FONT_S.height, UI_BLUE);
@@ -172,4 +175,78 @@ void UI_UpdateBarS(uint8_t percent){
 
 void UI_UpdateBarF(uint8_t percent){
     DrawBar(ST7735_WIDTH/2+4, UI_BAR_Y+UI_BAR_PAD, UI_BAR_BOX_W, UI_BAR_BOX_H, percent);
+}
+
+/**
+ * @brief Update allgemeinen Status-Text
+ */
+void UI_UpdateStatus(const char *status) {
+    if (strcmp(status, lastStatusText) != 0) {
+        // Lösche alten Text-Bereich
+        ST7735_FillRectangleFast(UI_MARGIN_L, UI_BAR_Y + UI_BAR_H - 15,
+                                80, 12, UI_BLUE);
+
+        // Schreibe neuen Status
+        //Print(UI_MARGIN_L, UI_BAR_Y + UI_BAR_H - 15,
+                         // status, FONT_S, ST7735_WHITE, UI_BLUE);
+
+        strncpy(lastStatusText, status, sizeof(lastStatusText) - 1);
+        lastStatusText[sizeof(lastStatusText) - 1] = '\0';
+    }
+}
+
+/**
+ * @brief Update Feedrate-Anzeige
+ */
+void UI_UpdateFeedrate(uint16_t feedrate, uint16_t override) {
+    char feedText[16];
+    snprintf(feedText, sizeof(feedText), "F:%d", feedrate);
+
+    if (strcmp(feedText, lastFeedrateText) != 0) {
+        // Position für Feedrate-Text (rechts unten)
+        int x_pos = ST7735_WIDTH/2 + 4;
+        int y_pos = UI_BAR_Y + 3;
+
+        ST7735_FillRectangleFast(x_pos + 20, y_pos, 50, 10, UI_BLUE);
+       // Print(x_pos + 20, y_pos, feedText, FONT_S, ST7735_WHITE, UI_BLUE);
+
+        strcpy(lastFeedrateText, feedText);
+    }
+
+    // Update Feedrate-Override-Balken
+    uint8_t feed_percent = (override > 200) ? 100 : (override / 2);
+    UI_UpdateBarF(feed_percent);
+}
+
+/**
+ * @brief Update Spindle-Anzeige
+ */
+void UI_UpdateSpindle(uint16_t speed, uint16_t override) {
+    char spindleText[16];
+    snprintf(spindleText, sizeof(spindleText), "S:%d", speed);
+
+    if (strcmp(spindleText, lastSpindleText) != 0) {
+        // Position für Spindle-Text
+        int x_pos = ST7735_WIDTH/2 + 4;
+        int y_pos = UI_BAR_Y + 15;
+
+        ST7735_FillRectangleFast(x_pos + 20, y_pos, 50, 10, UI_BLUE);
+       // Print(x_pos + 20, y_pos, spindleText, FONT_S, ST7735_WHITE, UI_BLUE);
+
+        strcpy(lastSpindleText, spindleText);
+    }
+
+    // Update Spindle-Override-Balken
+    uint8_t spin_percent = (override > 200) ? 100 : (override / 2);
+    UI_UpdateBarS(spin_percent);
+}
+
+
+/**
+ * @brief Generische Werte-Update-Funktion (für externe Nutzung)
+ */
+void UI_UpdateValue(int y_pos, float value, char *cache_str, int cache_size) {
+    if (cache_size >= 20) {
+        DrawValue(y_pos, value, cache_str);
+    }
 }

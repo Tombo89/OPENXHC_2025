@@ -29,6 +29,7 @@
 #include "st7735.h"
 #include "fonts.h"
 #include "ui.h"
+#include "xhc_integration.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -98,20 +99,20 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   ST7735_Init();
+  xhc_init();
   UI_DrawStatic();
 
   // Farbflächen zum schnellen Check
   //ST7735_FillScreen(ST7735_WHITE);
-uint32_t Test=0.0000f;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  xhc_main_loop();
 
-	  UI_UpdateWC(Test, -1000.0000f, -1000.0000f);
-	  Test++;
 	    // neue Position berechnen
 
     /* USER CODE END WHILE */

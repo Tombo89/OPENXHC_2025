@@ -36,6 +36,11 @@
 #define UI_BAR_BOX_W  120
 #define UI_BAR_BOX_H  18
 
+// Fontzuweisungen
+#define FONT_L  Font_16x26
+#define FONT_M  Font_9
+#define FONT_S  Font_7x10
+
 // Public API
 void UI_DrawStatic(void);
 void UI_UpdateWC(float x, float y, float z);
@@ -44,5 +49,11 @@ void UI_UpdatePosText(const char *text);       // z.B. "OFF"
 void UI_UpdateStepText(const char *text);      // z.B. "0.001"
 void UI_UpdateBarS(uint8_t percent);           // 0..100
 void UI_UpdateBarF(uint8_t percent);           // 0..100
+void UI_UpdateStatus(const char *status);     // Allgemeiner Status
+void UI_UpdateFeedrate(uint16_t feedrate, uint16_t override);
+void UI_UpdateSpindle(uint16_t speed, uint16_t override);
+
+// Hilfsfunktion für zeichenweise Updates (intern)
+void UI_UpdateValue(int y_pos, float value, char *cache_str, int cache_size);
 
 #endif /* INC_UI_H_ */
